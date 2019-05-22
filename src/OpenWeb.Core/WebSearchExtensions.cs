@@ -22,7 +22,7 @@ namespace OpenWeb.Core
         /// </summary>
         /// <param name="paragraphs"></param>
         /// <returns></returns>
-        public static IEnumerable<KeyValuePair<string, double>> OrderParagraphsByHighest(this Dictionary<string, double> paragraphs)
+        public static IEnumerable<KeyValuePair<string, double>> OrderByHighest(this Dictionary<string, double> paragraphs)
         {
             return paragraphs
                 .OrderBy(statement => statement.Value)
@@ -34,7 +34,7 @@ namespace OpenWeb.Core
         /// </summary>
         /// <param name="paragraphs"></param>
         /// <returns></returns>
-        public static IEnumerable<KeyValuePair<string, double>> OrderParagraphsByLowest(this Dictionary<string, double> paragraphs)
+        public static IEnumerable<KeyValuePair<string, double>> OrderByLowest(this Dictionary<string, double> paragraphs)
         {
             return paragraphs
                 .OrderBy(statement => statement.Value);                
