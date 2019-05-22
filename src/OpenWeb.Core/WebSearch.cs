@@ -1,24 +1,38 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Collections.Generic;
 
 using Summarizer.Core;
 
 using OpenWeb.Core.Utilities;
-using System;
+using System.Text.RegularExpressions;
 
 namespace OpenWeb.Core
 {
     public class WebSearch
     {
-        public readonly ISearchDomain SearchSettings;
+        private static int _maxLinks = 2;
+        private static int _maxParagraphs = 2;
+
+        public readonly SearchSettingsType SearchSettings;
+        public readonly ISearchDomain SearchDomain;
         public readonly IKeywordExtractor KeywordExtractor;
 
-        public WebSearch(ISearchDomain searchSettings, IKeywordExtractor keywordExtractor)
+        public WebSearch(ISearchDomain searchDomain, IKeywordExtractor keywordExtractor)
         {
-            SearchSettings = searchSettings;
+            SearchDomain = searchDomain;
             KeywordExtractor = keywordExtractor;
+
+            SearchSettings.MaxLinks = _maxLinks;
+            SearchSettings.MaxParagraphs = _maxParagraphs;
         }
 
+        public WebSearch(ISearchDomain searchDomain, IKeywordExtractor keywordExtractor, SearchSettingsType settings) : this(searchDomain, keywordExtractor)
+        {
+            SearchSettings = settings;            
+        }
+
+        
         /// <summary>
         /// Invokes the vectorization/ web search with a question.
         /// </summary>
@@ -26,100 +40,122 @@ namespace OpenWeb.Core
         /// <returns>Vectorized answers</returns>
         public Dictionary<string, double> Invoke(string question)
         {
-            string domainRootUrl = SearchSettings.GenerateRootUrl(question);
+            string domainRootUrl = SearchDomain.GenerateRootUrl(question);
             var searchDomainDocument = new DocumentNodeSelector(domainRootUrl);
 
             var documentLinks = searchDomainDocument
                 .FindAllLinks()
-                .Select(link => SearchSettings.ParseSearchUrl(link))
+                .Select(link => SearchDomain.ParseSearchUrl(link))
                 .Where(link => link != null)
                 .Distinct()
                 .ToList();
 
-            var scoredKeywords = _createScoredKeywordsFromLinks(documentLinks);
-            
-            foreach (string questionWord in SummarizationHelper.ConvertStatementToSentences(question))
-            {
-                if (scoredKeywords.ContainsKey(questionWord)) scoredKeywords[questionWord] *= 2;               
-                else scoredKeywords.Add(questionWord, 100);
-            }
+            documentLinks  // resize the links
+                .RemoveRange(SearchSettings.MaxLinks, documentLinks.Count - SearchSettings.MaxLinks);
 
-            return _createScoredStatements(documentLinks, scoredKeywords);
-        }       
+            string cleanedQuestion = Regex.Replace(question, @"[^0-9A-Za-z ,]", "");
 
-        private Dictionary<string, double> _createScoredKeywordsFromLinks(IEnumerable<string> documentLinks)
+            var originalKeywords = cleanedQuestion
+                .Split(' ')
+                .ToList();
+
+            var paragraphs = _generateParagraphsFromLinks(documentLinks);
+            var scoredKeywords = _createScoredKeywords(paragraphs, originalKeywords);
+
+            return _createScoredStatements(paragraphs, scoredKeywords);
+        }
+
+        public IEnumerable<string> _generateParagraphsFromLinks(IEnumerable<string> documentLinks)
         {
-            var keywords = new Dictionary<string, double>();
+            var siteData = new List<string>();
+
             foreach (string documentLink in documentLinks)
             {
                 var document = new DocumentNodeSelector(documentLink);
 
                 if (!document.IsDocumentValid) continue;
-                
-                var paragraphs = document
-                    .FindAllParagraphs()
-                    .Where(paragraph => paragraph != null)
-                    .ToList();
 
-                var paragraphKeywords = _generateKeywordsFromParagraph(paragraphs);
-
-                foreach (var keyword in paragraphKeywords)
+                try
                 {
-                    if (string.IsNullOrWhiteSpace(keyword.Key) || string.IsNullOrEmpty(keyword.Key)) continue;
+                    var paragraphs = document
+                            .FindAllParagraphs()
+                            .Where(paragraph => paragraph != null)
+                            .ToList();
+                    paragraphs.RemoveRange(SearchSettings.MaxParagraphs, paragraphs.Count - SearchSettings.MaxParagraphs);
 
-                    if (keywords.ContainsKey(keyword.Key))
-                    {
-                        keywords[keyword.Key] += keyword.Value;
-                    }
-                    else
-                    {
-                        keywords.Add(keyword.Key, keyword.Value);
-                    }
+                    siteData.AddRange(paragraphs);
+                }
+                catch (ArgumentNullException)
+                {
+                    continue;
+                }
+                catch (Exception ex)
+                {
+                    throw ex;
                 }
             }
 
-            return keywords;
+            return siteData;
         }
-        private Dictionary<string, double> _createScoredStatements(IEnumerable<string> documentLinks, Dictionary<string, double> keywords)
+        private Dictionary<string, double> _createScoredKeywords(IEnumerable<string> siteParagraphs, List<string> originalKeywords)
+        {
+            var scoredKeywords = new Dictionary<string, double>();
+
+            var paragraphKeywords = _generateKeywordsFromParagraph(siteParagraphs);
+
+            foreach (var keyword in paragraphKeywords)
+            {
+                var lowerKeyword = keyword.Key.ToLower();
+
+                double score = (scoredKeywords.ContainsKey(keyword.Key)) ? keyword.Value + scoredKeywords[keyword.Key] : keyword.Value;
+                
+                if (originalKeywords.Contains(lowerKeyword))
+                {
+                    score *= 1.3;
+                }
+                else
+                {
+                    score -= (score / 5);
+                }
+
+                if (scoredKeywords.ContainsKey(lowerKeyword))
+                {
+                    scoredKeywords[lowerKeyword] = score;
+                }
+                else
+                {
+                    scoredKeywords.Add(lowerKeyword, score);
+                }
+            }
+
+            return scoredKeywords;
+        }
+        private Dictionary<string, double> _createScoredStatements(IEnumerable<string> paragraphs, Dictionary<string, double> keywords)
         {
             var statements = new Dictionary<string, double>();
 
-            foreach (string link in documentLinks)
+            foreach (string paragraph in paragraphs)
             {
-                var paragraphs = new DocumentNodeSelector(link)                    
-                    .FindAllParagraphs()                   
-                    ?.ToList();
+                double paragraphScore = 0.0;
+                string[] words = paragraph.Split(' ');
 
-                if (paragraphs == null) continue;
+                if (string.IsNullOrWhiteSpace(paragraph) || string.IsNullOrEmpty(paragraph)) continue;
 
-                foreach (string paragraph in paragraphs)
+                foreach (string word in words)
                 {
-                    var sentences = SummarizationHelper.ConvertStatementToSentences(paragraph);
-
-                    foreach (string sentence in sentences)
+                    if (keywords.ContainsKey(word.ToLower()))
                     {
-                        double sentenceScore = 0.0;
-                        string[] words = paragraph.Split(' ');
+                        paragraphScore += keywords[word.ToLower()];
+                    }
+                }
 
-                        if (string.IsNullOrWhiteSpace(sentence) || string.IsNullOrEmpty(sentence)) continue;
-
-                        foreach (string word in words)
-                        {
-                            if (keywords.ContainsKey(word))
-                            {
-                                sentenceScore += keywords[word];
-                            }
-                        }
-
-                        if (statements.ContainsKey(sentence))
-                        {
-                            statements[sentence] += sentenceScore;
-                        }
-                        else
-                        {
-                            statements.Add(sentence, sentenceScore);
-                        }
-                    }                    
+                if (statements.ContainsKey(paragraph))
+                {
+                    statements[paragraph] += paragraphScore;
+                }
+                else
+                {
+                    statements.Add(paragraph, paragraphScore);
                 }
             }
 
