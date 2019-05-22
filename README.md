@@ -120,7 +120,8 @@ using OpenWeb.Core;
 
 // ...
 SearchSettingsType settings;
-settings.maxLinks = 3; // max amount of links set
+settings.MaxLinks = 3; // max amount of links set
+settings.MaxParagraphs = 5; // max amount of paragraphs
 ```
 
 #### Compare Against Keyword Set
