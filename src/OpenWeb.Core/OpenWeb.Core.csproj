@@ -61,10 +61,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ISearchable.cs" />
+    <Compile Include="SearchSettingsType.cs" />
     <Compile Include="Utilities\DocumentNodeSelector.cs" />
     <Compile Include="SearchDomains\GoogleSearchDomain.cs" />
     <Compile Include="WebSearch.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="WebSearchHelper.cs" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="WebSearchExtensions.cs" />
