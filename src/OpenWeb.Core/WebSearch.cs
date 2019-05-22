@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using Summarizer.Core;
 
 using OpenWeb.Core.Utilities;
-using System.Text.RegularExpressions;
 
 namespace OpenWeb.Core
 {
@@ -53,11 +52,7 @@ namespace OpenWeb.Core
             documentLinks  // resize the links
                 .RemoveRange(SearchSettings.MaxLinks, documentLinks.Count - SearchSettings.MaxLinks);
 
-            string cleanedQuestion = Regex.Replace(question, @"[^0-9A-Za-z ,]", "");
-
-            var originalKeywords = cleanedQuestion
-                .Split(' ')
-                .ToList();
+            var originalKeywords = WebSearchHelper.SplitSenteceToKeywords(question);
 
             var paragraphs = _generateParagraphsFromLinks(documentLinks);
             var scoredKeywords = _createScoredKeywords(paragraphs, originalKeywords);
