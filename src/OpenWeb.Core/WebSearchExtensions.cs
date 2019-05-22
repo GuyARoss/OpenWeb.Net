@@ -41,14 +41,25 @@ namespace OpenWeb.Core
         }
 
         /// <summary>
-        /// Generates a correctness score based on a set of vectorized keywords.
+        /// Generates a correctness score based on a set of keywords.
         /// </summary>
         /// <param name="scoredStatements"></param>
         /// <param name="keywords"></param>
         /// <returns></returns>
-		public static double ScoreFromVectorizedKeywords(this Dictionary<string, double> scoredStatements, IEnumerable<string> keywords)
+		public static double ScoreFromKeywords(this string answer, IEnumerable<string> keywords)
         {
-            throw new System.NotImplementedException();
+            var answerKeywords = WebSearchHelper.SplitSenteceToKeywords(answer);
+
+            double amountCorrect = 0;
+            foreach(string keyword in keywords)
+            {
+                if (answerKeywords.Contains(keyword))
+                {
+                    amountCorrect++;
+                }
+            }
+
+            return (amountCorrect / keywords.Count());
         }
     }
 }
