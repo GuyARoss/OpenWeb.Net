@@ -18,7 +18,7 @@ Open Web utilities OpenNlp, to use, extract the `NLP` contents within the [proje
 
 ## Usage
 
-#### Searching for an answer
+### Searching for an answer
 Utilizing the web for finding questions requires an instance of [ISearchDomain](#Available-Instances-of-ISearchDomain). As well as an instance of [IKeywordExtractor](https://github.com/GuyARoss/Summarizer.Net) from the Summarizer .Net project.
 
 Additionally, the web search invocation returns a dictionary of ranked answers utilizing a variant of the [Page Rank Algorithm](https://en.wikipedia.org/wiki/PageRank).
