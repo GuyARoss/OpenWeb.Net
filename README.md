@@ -1,13 +1,15 @@
 ## OpenWeb .Net
 OpenWeb .Net is a Library that provides high-level access to finding answers to your questions on the web. That includes functionality for fact checking, as well a finding answers to more general questions.
 
-Extracted for public use from [Project Orva](https://www.ross-cdn.com/orva).
+Extracted for public use from [Project Orva](https://www.ross-cdn.com/orva). 
+Expansive of the [Summarizer .Net](https://github.com/GuyARoss/Summarizer.Net) project.
 
 ## Installation
 
 #### Basic Usage Installation
-Import all of the OpenWeb Dlls and external dependencies from the [distribute directory](./distribute) into your .net project solution. 
-- Summarizer.Core
+Import all of the OpenWeb Dlls and external dependencies from the [distribute directory](./distribute) into your .net project solution.
+
+- [Summarizer.Core](https://github.com/GuyARoss/Summarizer.Net)
 - Summarizer.Infrastructure
 - Newtonsoft.Json
 - HtmlAgilityPack
